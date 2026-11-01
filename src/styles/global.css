@@ -452,7 +452,11 @@ footer .copy { width: 100%; font-family: var(--sans); font-size: 12px; color: va
   line-height: 1.9;
   letter-spacing: 0.02em;
 }
-.chapter-body p { margin: 0 0 1.1em; text-align: justify; text-justify: inter-ideograph; }
+.chapter-body p {
+    margin: 0 0 1.1em;
+    text-align: left;
+    text-justify: auto;
+}
 .chapter-body.drop-cap p.lead::first-letter {
   float: left;
   font-family: var(--display);
