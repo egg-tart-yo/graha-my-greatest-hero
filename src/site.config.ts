@@ -97,7 +97,7 @@ export const site = loadSite();
 export const ui = {
   allWorks: '全部文章',
   cpIndex: 'CP / Tag',
-  seriesIndex: '系列',
+  seriesIndex: '分類',
   chapters: '章',
   chapterOf: (n: number, total: number) => `第 ${n} 章 / 共 ${total} 章`,
   words: (n: number) => (n >= 10000 ? `${(n / 10000).toFixed(1)} 萬字` : `${n.toLocaleString('zh-CN')} 字`),
@@ -109,11 +109,11 @@ export const ui = {
   nextChapter: '下一章',
   allChapters: '全部章節',
   startReading: '開始閱讀',
-  inSeries: '收錄於系列',
+  inSeries: '收錄於分類',
   // 系列里的序号，和章节一样只写数字：01、02……
   seriesPart: (n: number) => String(n).padStart(2, '0'),
-  prevInSeries: '系列上一篇',
-  nextInSeries: '系列下一篇',
+  prevInSeries: '分類上一篇',
+  nextInSeries: '分類下一篇',
   moreFromCp: (cp: string) => `看更多${cp}`,
   viewSeries: '查看整個系列',
   viewCp: (cp: string) => `${cp}全部作品`,
