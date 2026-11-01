@@ -11,7 +11,7 @@ display:
   font: sypxzs
   darkMode: auto
   perPage: 7
-  leadStory: true
+  leadStory: false
   dropCap: false
   endMark: true
   progressBar: true
