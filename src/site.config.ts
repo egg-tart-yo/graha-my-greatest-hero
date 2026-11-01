@@ -95,7 +95,7 @@ export const site = loadSite();
 
 // 界面文字。做成模板后，换语言只改这里。
 export const ui = {
-  allWorks: '全部作品',
+  allWorks: '全部文章',
   cpIndex: 'CP / Tag',
   seriesIndex: '系列',
   chapters: '章',
