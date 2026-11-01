@@ -96,7 +96,7 @@ export const site = loadSite();
 // 界面文字。做成模板后，换语言只改这里。
 export const ui = {
   allWorks: '全部作品',
-  cpIndex: 'CP分類',
+  cpIndex: 'CP / Tag',
   seriesIndex: '系列',
   chapters: '章',
   chapterOf: (n: number, total: number) => `第 ${n} 章 / 共 ${total} 章`,
