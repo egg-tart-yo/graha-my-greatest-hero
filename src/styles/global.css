@@ -454,8 +454,8 @@ footer .copy { width: 100%; font-family: var(--sans); font-size: 12px; color: va
 }
 .chapter-body p {
     margin: 0 0 1.1em;
-    text-align: left;
-    text-justify: auto;
+    text-align: justify;
+    white-space: pre-wrap;
 }
 .chapter-body.drop-cap p.lead::first-letter {
   float: left;
