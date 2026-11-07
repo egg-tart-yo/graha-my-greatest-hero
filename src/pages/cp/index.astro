@@ -1,18 +1,497 @@
+
 ---
 import Base from '../../layouts/Base.astro';
-import { ui } from '../../site.config';
-import { loadCps, cpUrl } from '../../lib/works';
-const cps = await loadCps();
-const total = cps.reduce((n, g) => n + g.works.length, 0);
+import WorkItem from '../../components/WorkItem.astro';
+import { site, ui } from '../../site.config';
+import { loadCps, loadWorks } from '../../lib/works';
+
+const [cps, works] = await Promise.all([
+  loadCps(),
+  loadWorks()
+]);
 ---
+
 <Base section="cp" title={ui.cpIndex}>
   <div class="section-head">
     <h1>{ui.cpIndex}</h1>
-    <p class="meta"><span>{cps.length} 对</span><span>{ui.works(total)}</span></p>
+    <p class="meta">
+      <span>{cps.length} 對</span>
+      <span>{ui.works(works.length)}</span>
+    </p>
   </div>
-  <ul class="directory">
-    {cps.map((g) => (
-      <li><a href={cpUrl(g.name)}><span class="name">{g.name}</span><span class="count">{ui.works(g.works.length)}</span></a></li>
-    ))}
-  </ul>
+
+  <section
+    id="cp-browser"
+    class="cp-browser"
+    data-page-size={site.perPage}
+  >
+    <div class="cp-filter">
+      <div class="cp-filter-heading">
+        <h2>篩選 CP</h2>
+        <button
+          id="cp-clear"
+          type="button"
+          class="cp-clear"
+        >
+          清除篩選
+        </button>
+      </div>
+
+      <p class="cp-hint">
+        可選擇多個標籤，只顯示同時包含所有選取 CP 的文章。
+      </p>
+
+      <div class="cp-options">
+        {cps.map((g) => (
+          <label class="cp-option">
+            <input
+              type="checkbox"
+              name="cp"
+              value={g.name}
+            />
+            <span class="cp-option-name">
+              {g.name}
+            </span>
+            <span class="cp-option-count">
+              {g.works.length}
+            </span>
+          </label>
+        ))}
+      </div>
+    </div>
+
+    <div class="cp-result-heading">
+      <h2>文章列表</h2>
+      <p class="meta" aria-live="polite">
+        <span id="cp-result-count">
+          {ui.works(works.length)}
+        </span>
+      </p>
+    </div>
+
+    <ul
+      id="cp-results"
+      class="river"
+      style="border-top:1px solid var(--rule)"
+    >
+      {works.map((w) => (
+        <WorkItem
+          work={w}
+          showCp={true}
+          filterable={true}
+        />
+      ))}
+    </ul>
+
+    <p id="cp-empty" class="cp-empty" hidden>
+      沒有符合條件的文章。
+    </p>
+
+    <nav
+      id="cp-pagination"
+      class="cp-pagination"
+      aria-label="文章分頁"
+    ></nav>
+  </section>
 </Base>
+
+<script>
+  const root = document.querySelector<HTMLElement>('#cp-browser');
+
+  if (root) {
+    const checkboxes = Array.from(
+      root.querySelectorAll<HTMLInputElement>(
+        'input[name="cp"]'
+      )
+    );
+
+    const stories = Array.from(
+      root.querySelectorAll<HTMLElement>(
+        '#cp-results > .story'
+      )
+    );
+
+    const countElement = root.querySelector<HTMLElement>(
+      '#cp-result-count'
+    );
+
+    const emptyElement = root.querySelector<HTMLElement>(
+      '#cp-empty'
+    );
+
+    const pager = root.querySelector<HTMLElement>(
+      '#cp-pagination'
+    );
+
+    const clearButton = root.querySelector<HTMLButtonElement>(
+      '#cp-clear'
+    );
+
+    const pageSize = Math.max(
+      1,
+      Number(root.dataset.pageSize) || 20
+    );
+
+    // 取得每篇文章對應的 CP
+    const items = stories.map((element) => {
+      let cps: string[] = [];
+
+      try {
+        cps = JSON.parse(element.dataset.cps || '[]');
+      } catch {
+        cps = [];
+      }
+
+      return { element, cps };
+    });
+
+    // 從網址還原篩選條件
+    const params = new URLSearchParams(window.location.search);
+
+    const selectedFromUrl = params.getAll('cp');
+
+    checkboxes.forEach((checkbox) => {
+      checkbox.checked = selectedFromUrl.includes(checkbox.value);
+    });
+
+    let currentPage = Math.max(
+      1,
+      Number.parseInt(params.get('page') || '1', 10) || 1
+    );
+
+    function getSelectedCps(): string[] {
+      return checkboxes
+        .filter((checkbox) => checkbox.checked)
+        .map((checkbox) => checkbox.value);
+    }
+
+    // 將篩選條件同步到網址
+    function updateUrl() {
+      const url = new URL(window.location.href);
+
+      url.searchParams.delete('cp');
+      url.searchParams.delete('page');
+
+      getSelectedCps().forEach((cp) => {
+        url.searchParams.append('cp', cp);
+      });
+
+      if (currentPage > 1) {
+        url.searchParams.set('page', String(currentPage));
+      }
+
+      window.history.replaceState(null, '', url);
+    }
+
+    // 建立分頁按鈕
+    function createPageButton(
+      label: string,
+      page: number,
+      disabled = false,
+      active = false
+    ) {
+      const button = document.createElement('button');
+
+      button.type = 'button';
+      button.textContent = label;
+      button.disabled = disabled;
+
+      if (active) {
+        button.classList.add('active');
+        button.setAttribute('aria-current', 'page');
+      }
+
+      button.addEventListener('click', () => {
+        if (disabled || active) return;
+
+        currentPage = page;
+        render();
+
+        root.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start'
+        });
+      });
+
+      return button;
+    }
+
+    // 建立頁碼清單
+    function renderPagination(totalPages: number) {
+      if (!pager) return;
+
+      pager.replaceChildren();
+
+      if (totalPages <= 1) return;
+
+      pager.appendChild(
+        createPageButton(
+          '← 上一頁',
+          currentPage - 1,
+          currentPage === 1
+        )
+      );
+
+      let previous = 0;
+
+      for (let page = 1; page <= totalPages; page++) {
+        const visible =
+          page === 1 ||
+          page === totalPages ||
+          Math.abs(page - currentPage) <= 1;
+
+        if (!visible) continue;
+
+        if (previous && page - previous > 1) {
+          const gap = document.createElement('span');
+          gap.textContent = '…';
+          gap.className = 'cp-page-gap';
+          pager.appendChild(gap);
+        }
+
+        pager.appendChild(
+          createPageButton(
+            String(page),
+            page,
+            false,
+            page === currentPage
+          )
+        );
+
+        previous = page;
+      }
+
+      pager.appendChild(
+        createPageButton(
+          '下一頁 →',
+          currentPage + 1,
+          currentPage === totalPages
+        )
+      );
+    }
+
+    // 核心：AND 交集篩選
+    function render() {
+      const selected = getSelectedCps();
+
+      const filtered = items.filter((item) =>
+        selected.every((cp) => item.cps.includes(cp))
+      );
+
+      const total = filtered.length;
+
+      const totalPages = Math.max(
+        1,
+        Math.ceil(total / pageSize)
+      );
+
+      currentPage = Math.min(
+        Math.max(currentPage, 1),
+        totalPages
+      );
+
+      const start = (currentPage - 1) * pageSize;
+      const visible = new Set(
+        filtered.slice(start, start + pageSize)
+      );
+
+      items.forEach((item) => {
+        item.element.hidden = !visible.has(item);
+      });
+
+      if (countElement) {
+        countElement.textContent = `${total} 篇`;
+      }
+
+      if (emptyElement) {
+        emptyElement.hidden = total !== 0;
+      }
+
+      renderPagination(totalPages);
+      updateUrl();
+    }
+
+    // 勾選或取消標籤
+    checkboxes.forEach((checkbox) => {
+      checkbox.addEventListener('change', () => {
+        currentPage = 1;
+        render();
+      });
+    });
+
+    // 清除全部標籤
+    clearButton?.addEventListener('click', () => {
+      checkboxes.forEach((checkbox) => {
+        checkbox.checked = false;
+      });
+
+      currentPage = 1;
+      render();
+    });
+
+    // 使用瀏覽器上一頁 / 下一頁時還原狀態
+    window.addEventListener('popstate', () => {
+      const params = new URLSearchParams(window.location.search);
+      const selected = params.getAll('cp');
+
+      checkboxes.forEach((checkbox) => {
+        checkbox.checked = selected.includes(checkbox.value);
+      });
+
+      currentPage = Math.max(
+        1,
+        Number.parseInt(params.get('page') || '1', 10) || 1
+      );
+
+      render();
+    });
+
+    // 首次載入
+    render();
+  }
+</script>
+
+<style>
+  .cp-filter {
+    margin-bottom: 48px;
+  }
+
+  .cp-filter-heading,
+  .cp-result-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+
+  .cp-filter-heading h2,
+  .cp-result-heading h2 {
+    margin: 0;
+    font-size: 1.3rem;
+    font-weight: 400;
+  }
+
+  .cp-hint {
+    color: var(--muted, #777);
+    font-size: 0.9rem;
+    margin-bottom: 22px;
+  }
+
+  .cp-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .cp-option {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 13px;
+    border: 1px solid var(--rule);
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: border-color 0.2s, background-color 0.2s;
+  }
+
+  .cp-option:hover {
+    border-color: currentColor;
+  }
+
+.cp-option:has(input:checked) {
+  border-color: currentColor;
+  background: color-mix(in srgb, currentColor 10%, transparent);
+}
+
+.cp-option:has(input:checked) .cp-option-name {
+  font-weight: 600;
+}
+
+  .cp-option input {
+    margin: 0;
+    accent-color: currentColor;
+  }
+
+  .cp-option-count {
+    opacity: 0.55;
+    font-size: 0.8rem;
+  }
+
+  .cp-clear {
+    border: 0;
+    background: none;
+    padding: 4px;
+    color: inherit;
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 4px;
+    font: inherit;
+    font-size: 0.85rem;
+  }
+
+  .cp-clear:hover {
+    opacity: 0.6;
+  }
+
+  .cp-empty {
+    text-align: center;
+    padding: 64px 0;
+    opacity: 0.65;
+  }
+
+  .cp-pagination {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    margin: 48px 0;
+  }
+
+  .cp-pagination :global(button) {
+    border: 1px solid var(--rule);
+    background: transparent;
+    color: inherit;
+    padding: 8px 12px;
+    cursor: pointer;
+    font: inherit;
+  }
+
+  .cp-pagination :global(button.active) {
+    border-color: currentColor;
+    font-weight: bold;
+  }
+
+  .cp-pagination :global(button:disabled) {
+    opacity: 0.35;
+    cursor: default;
+  }
+
+  .cp-pagination :global(.cp-page-gap) {
+    padding: 0 5px;
+  }
+
+  .cp-browser :global(.story[hidden]) {
+    display: none !important;
+  }
+
+  .cp-empty[hidden] {
+    display: none !important;
+  }
+
+  @media (max-width: 600px) {
+    .cp-options {
+      gap: 8px;
+    }
+
+    .cp-option {
+      padding: 8px 10px;
+      font-size: 0.82rem;
+    }
+
+    .cp-pagination {
+      gap: 5px;
+    }
+  }
+</style>
