@@ -26,20 +26,22 @@ const [cps, works] = await Promise.all([
     data-page-size={site.perPage}
   >
     <div class="cp-filter">
-      <div class="cp-filter-heading">
-        <h2>篩選</h2>
-        <button
-          id="cp-clear"
-          type="button"
-          class="cp-clear"
-        >
-          清除篩選
-        </button>
-      </div>
+     <div class="cp-filter-heading">
+  <div class="cp-filter-title">
+    <h2>篩選</h2>
+    <span class="cp-hint">
+      可選擇多個標籤，只顯示同時包含所有選取 CP 的文章。
+    </span>
+  </div>
 
-      <p class="cp-hint">
-        可選擇多個標籤，只顯示同時包含所有選取 CP 的文章。
-      </p>
+  <button
+    id="cp-clear"
+    type="button"
+    class="cp-clear"
+  >
+    清除篩選
+  </button>
+</div>
 
       <div class="cp-options">
         {cps.map((g) => (
@@ -352,10 +354,12 @@ const [cps, works] = await Promise.all([
 </script>
 
 <style>
+  /* 篩選區整體 */
   .cp-filter {
     margin-bottom: 48px;
   }
 
+  /* 篩選標題與文章列表標題 */
   .cp-filter-heading,
   .cp-result-heading {
     display: flex;
@@ -372,12 +376,22 @@ const [cps, works] = await Promise.all([
     font-weight: 400;
   }
 
-  .cp-hint {
-    color: var(--muted, #777);
-    font-size: 0.9rem;
-    margin-bottom: 22px;
+  /* 篩選標題 + 小字說明 */
+  .cp-filter-title {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 12px;
+    min-width: 0;
   }
 
+  .cp-hint {
+    color: var(--muted, #777);
+    font-size: 0.75rem;
+    line-height: 1.5;
+  }
+
+  /* CP 標籤區域 */
   .cp-options {
     display: flex;
     flex-wrap: wrap;
@@ -399,14 +413,15 @@ const [cps, works] = await Promise.all([
     border-color: currentColor;
   }
 
-.cp-option:has(input:checked) {
-  border-color: currentColor;
-  background: color-mix(in srgb, currentColor 10%, transparent);
-}
+  /* 勾選後的標籤樣式，兼容深色與淺色模式 */
+  .cp-option:has(input:checked) {
+    border-color: currentColor;
+    background: color-mix(in srgb, currentColor 10%, transparent);
+  }
 
-.cp-option:has(input:checked) .cp-option-name {
-  font-weight: 600;
-}
+  .cp-option:has(input:checked) .cp-option-name {
+    font-weight: 600;
+  }
 
   .cp-option input {
     margin: 0;
@@ -418,7 +433,9 @@ const [cps, works] = await Promise.all([
     font-size: 0.8rem;
   }
 
+  /* 清除篩選按鈕，保持在最右邊 */
   .cp-clear {
+    flex-shrink: 0;
     border: 0;
     background: none;
     padding: 4px;
@@ -434,12 +451,14 @@ const [cps, works] = await Promise.all([
     opacity: 0.6;
   }
 
+  /* 沒有符合條件的文章 */
   .cp-empty {
     text-align: center;
     padding: 64px 0;
     opacity: 0.65;
   }
 
+  /* 分頁區域 */
   .cp-pagination {
     display: flex;
     flex-wrap: wrap;
@@ -472,6 +491,7 @@ const [cps, works] = await Promise.all([
     padding: 0 5px;
   }
 
+  /* 隱藏不符合篩選條件的作品 */
   .cp-browser :global(.story[hidden]) {
     display: none !important;
   }
@@ -480,7 +500,20 @@ const [cps, works] = await Promise.all([
     display: none !important;
   }
 
+  /* 手機版調整 */
   @media (max-width: 600px) {
+    .cp-filter-heading {
+      align-items: flex-start;
+    }
+
+    .cp-filter-title {
+      gap: 4px 10px;
+    }
+
+    .cp-hint {
+      font-size: 0.7rem;
+    }
+
     .cp-options {
       gap: 8px;
     }
@@ -495,3 +528,4 @@ const [cps, works] = await Promise.all([
     }
   }
 </style>
+
